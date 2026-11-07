@@ -8,6 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- PeerJS for Zero-Config WebRTC P2P Multiplayer -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap');
 
@@ -22,7 +24,7 @@
       font-family: 'Orbitron', sans-serif;
     }
 
-    /* Custom Cyber Neon Effects */
+    /* Custom Cyber Neon FX */
     .neon-border-cyan {
       box-shadow: 0 0 15px rgba(0, 243, 255, 0.4), inset 0 0 15px rgba(0, 243, 255, 0.2);
       border: 1px solid rgba(0, 243, 255, 0.6);
@@ -42,7 +44,7 @@
     }
 
     .glass-panel {
-      background: rgba(13, 19, 33, 0.85);
+      background: rgba(13, 19, 33, 0.88);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
@@ -71,11 +73,17 @@
   <div id="game-wrapper" class="relative w-full h-full flex items-center justify-center">
     <canvas id="gameCanvas" class="w-full h-full block bg-slate-950"></canvas>
 
+    <!-- Network Connection Status Pill (Top Left Always Active) -->
+    <div id="net-status-pill" class="absolute top-3 left-3 z-30 glass-panel px-3 py-1.5 rounded-full border border-cyan-500/30 flex items-center gap-2 text-xs font-orbitron shadow-lg">
+      <span id="net-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+      <span id="net-status-text" class="text-cyan-300 font-bold">INITIALIZING WEBRTC...</span>
+    </div>
+
     <!-- In-Game Cyber Overlay HUD -->
     <div id="game-hud" class="absolute inset-0 pointer-events-none hidden flex flex-col justify-between p-4 md:p-6">
       
       <!-- Top Bar: Scores & Killfeed -->
-      <div class="flex justify-between items-start w-full gap-4">
+      <div class="flex justify-between items-start w-full gap-4 mt-8 md:mt-0">
         
         <!-- Live Kill Feed (Top Left) -->
         <div id="kill-feed" class="flex flex-col gap-1 max-w-xs md:max-w-sm text-xs md:text-sm font-orbitron"></div>
@@ -90,7 +98,7 @@
         <!-- Dynamic Leaderboard (Top Right) -->
         <div class="glass-panel p-3 rounded-xl border border-slate-700/50 w-44 md:w-56">
           <div class="text-xs font-orbitron text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <i class="fa-solid font-bold fa-trophy text-amber-400"></i> Leaderboard
+            <i class="fa-solid fa-trophy text-amber-400"></i> Leaderboard
           </div>
           <div id="leaderboard-list" class="flex flex-col gap-1.5 text-xs"></div>
         </div>
@@ -144,7 +152,7 @@
   </div>
 
   <!-- ================= Toast Notifications ================= -->
-  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+  <div id="toast-container" class="fixed top-14 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- ================= Main Menu Screen ================= -->
   <div id="menu-screen" class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
@@ -159,7 +167,7 @@
         <h1 class="text-3xl md:text-5xl font-black font-orbitron tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-200 to-pink-500 neon-text-cyan">
           NEON ARENA
         </h1>
-        <p class="text-xs md:text-sm text-slate-400 font-semibold tracking-widest uppercase mt-1">Multiplayer Cyber Tank Warfare</p>
+        <p class="text-xs md:text-sm text-slate-400 font-semibold tracking-widest uppercase mt-1">Cross-Network Cyber Tank Warfare</p>
       </div>
 
       <!-- Player Customization Box -->
@@ -171,7 +179,7 @@
             <label class="block text-xs font-orbitron text-slate-400 uppercase tracking-wider mb-1">Pilot Handle</label>
             <div class="relative">
               <i class="fa-solid fa-user-ninja absolute left-3 top-3 text-cyan-400 text-sm"></i>
-              <input type="text" id="input-player-name" max="14" placeholder="CYBER_KNIGHT" value="CYBER_KNIGHT"
+              <input type="text" id="input-player-name" maxlength="14" placeholder="CYBER_KNIGHT" value="CYBER_KNIGHT"
                 class="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm text-cyan-300 font-bold focus:outline-none focus:border-cyan-400 transition-colors" />
             </div>
           </div>
@@ -208,7 +216,7 @@
 
         <!-- Join Room Input & Button -->
         <div class="flex gap-2 mt-1">
-          <input type="text" id="input-room-code" placeholder="ENTER 6-CHAR CODE" uppercase max="6"
+          <input type="text" id="input-room-code" placeholder="ENTER 6-CHAR CODE" maxlength="6"
             class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-center text-sm font-mono font-bold tracking-widest text-pink-400 uppercase focus:outline-none focus:border-pink-500" />
           <button id="btn-join-room" class="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white font-orbitron font-black text-sm rounded-xl transition-all transform hover:scale-[1.02] shadow-[0_0_15px_rgba(255,0,127,0.4)] flex items-center justify-center gap-2">
             <i class="fa-solid fa-right-to-bracket"></i> Join
@@ -218,7 +226,7 @@
 
       <!-- Audio Mute Toggle Footer -->
       <div class="flex justify-between items-center text-xs text-slate-500 pt-2 border-t border-slate-800/80">
-        <span class="flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-cyan-400"></i> v2.5 Production Build</span>
+        <span class="flex items-center gap-1.5"><i class="fa-solid fa-globe text-cyan-400"></i> PeerJS WebRTC Active</span>
         <button id="btn-toggle-sound" class="text-slate-400 hover:text-cyan-400 transition-colors flex items-center gap-1.5">
           <i class="fa-solid fa-volume-high" id="sound-icon"></i> Audio FX: ON
         </button>
@@ -327,33 +335,30 @@
     </div>
   </div>
 
-  <!-- ================= Firebase Realtime Script ================= -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+  <!-- ================= Core Game Engine Script ================= -->
+  <script>
     // ------------------------------------------------------------------
     // 1. GLOBAL STATE & CONFIG
     // ------------------------------------------------------------------
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'neon-tanks-arena';
-    let db = null, auth = null, currentUser = null;
-    let roomUnsubscribe = null;
-
-    // Available Tank Colors
     const TANK_COLORS = ['#00f3ff', '#ff007f', '#00ff66', '#ffcc00', '#b026ff', '#ff5500'];
 
-    // Tank Archetypes Stats
     const ARCHETYPES = {
-      viper: { name: 'Viper', icon: 'fa-bolt', hp: 100, speed: 3.6, fireRate: 320, damage: 22, colorDesc: 'Balanced Scout' },
-      phantom: { name: 'Phantom', icon: 'fa-ghost', hp: 80, speed: 4.8, fireRate: 220, damage: 15, colorDesc: 'High Mobility' },
-      titan: { name: 'Titan', icon: 'fa-shield-cat', hp: 150, speed: 2.6, fireRate: 480, damage: 35, colorDesc: 'Heavy Armor' },
-      spectre: { name: 'Spectre', icon: 'fa-crosshairs', hp: 85, speed: 3.3, fireRate: 700, damage: 55, colorDesc: 'Sniper Beam' }
+      viper: { name: 'Viper', icon: 'fa-bolt', hp: 100, speed: 3.6, fireRate: 300, damage: 22, colorDesc: 'Balanced Scout' },
+      phantom: { name: 'Phantom', icon: 'fa-ghost', hp: 80, speed: 4.8, fireRate: 200, damage: 15, colorDesc: 'High Mobility' },
+      titan: { name: 'Titan', icon: 'fa-shield-cat', hp: 150, speed: 2.6, fireRate: 460, damage: 35, colorDesc: 'Heavy Armor' },
+      spectre: { name: 'Spectre', icon: 'fa-crosshairs', hp: 85, speed: 3.3, fireRate: 680, damage: 55, colorDesc: 'Sniper Beam' }
     };
 
-    // State Variables
+    // STUN Servers for WebRTC Traversal across routers & mobile connections
+    const STUN_SERVERS = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' }
+    ];
+
     let localPlayer = {
-      id: 'local_' + Math.random().toString(36).substring(2, 8),
+      id: 'p_' + Math.random().toString(36).substring(2, 8),
       name: 'CYBER_KNIGHT',
       color: TANK_COLORS[0],
       archetype: 'viper',
@@ -376,26 +381,32 @@
       lastShotTime: 0
     };
 
-    let currentRoomId = null;
+    let peer = null;
+    let hostConn = null; // For guest connecting to host
+    let guestConnections = {}; // For host keeping track of connected guests
+    let currentRoomCode = null;
     let isSoloMode = false;
     let gameState = 'MENU'; // MENU, LOBBY, PLAYING, VICTORY
-    let roomData = null;
+    let roomData = { map: 'cyber_grid', scoreLimit: 15 };
 
-    // Simulation Entities
-    let players = {};
-    let projectiles = [];
-    let powerups = [];
-    let crates = [];
-    let particles = [];
-    let hazards = [];
-    let arenaWalls = [];
-    let killLogs = [];
+    // Dual Transport Engine (WebRTC PeerJS + BroadcastChannel Fallback for Canvas/Iframe Sandboxes)
+    let transportMode = 'PEERJS'; // 'PEERJS' | 'BROADCAST'
+    let broadcastChannel = null;
 
-    // Audio Engine Controls
+    // Handle WebSocket SecurityError globally when running inside restricted sandboxes/canvas previews
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event.reason && (String(event.reason).includes('SecurityError') || String(event.reason).includes('WebSocket'))) {
+        event.preventDefault();
+        console.warn('WebSocket connection restricted by canvas environment. Switching to BroadcastChannel transport.');
+        switchTransportToBroadcast();
+      }
+    });
+
+    // Audio Engine Toggle
     let audioEnabled = true;
 
     // ------------------------------------------------------------------
-    // 2. WEB AUDIO API PROCEDURAL SYNTHESIZER
+    // 2. WEB AUDIO API SYNTHESIZER
     // ------------------------------------------------------------------
     class SoundEngine {
       constructor() {
@@ -424,28 +435,25 @@
 
         const now = this.ctx.currentTime;
         if (archetype === 'spectre') {
-          // Deep high beam railgun sound
           osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(800, now);
-          osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+          osc.frequency.setValueAtTime(850, now);
+          osc.frequency.exponentialRampToValueAtTime(120, now + 0.3);
           gain.gain.setValueAtTime(0.3, now);
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
           osc.start(now);
           osc.stop(now + 0.3);
         } else if (archetype === 'phantom') {
-          // Rapid chirp
           osc.type = 'square';
-          osc.frequency.setValueAtTime(600, now);
-          osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+          osc.frequency.setValueAtTime(650, now);
+          osc.frequency.exponentialRampToValueAtTime(220, now + 0.1);
           gain.gain.setValueAtTime(0.15, now);
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
           osc.start(now);
           osc.stop(now + 0.1);
         } else {
-          // Standard laser
           osc.type = 'triangle';
           osc.frequency.setValueAtTime(450, now);
-          osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.15);
           gain.gain.setValueAtTime(0.25, now);
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
           osc.start(now);
@@ -459,9 +467,8 @@
         if (!this.ctx) return;
 
         const now = this.ctx.currentTime;
-        const dur = heavy ? 0.6 : 0.35;
+        const dur = heavy ? 0.65 : 0.35;
         
-        // Noise buffer for explosion rumble
         const bufferSize = this.ctx.sampleRate * dur;
         const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -501,7 +508,7 @@
         gain.connect(this.ctx.destination);
 
         osc.frequency.setValueAtTime(300, now);
-        osc.frequency.exponentialRampToValueAtTime(900, now + 0.25);
+        osc.frequency.exponentialRampToValueAtTime(950, now + 0.25);
         gain.gain.setValueAtTime(0.2, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
 
@@ -533,197 +540,392 @@
     const soundEngine = new SoundEngine();
 
     // ------------------------------------------------------------------
-    // 3. FIREBASE INITIALIZATION & SYNC ENGINE
+    // 3. PEERJS WEBRTC & BROADCASTCHANNEL HYBRID MULTIPLAYER ENGINE
     // ------------------------------------------------------------------
-    async function initFirebase() {
-      try {
-        if (typeof __firebase_config !== 'undefined') {
-          const config = JSON.parse(__firebase_config);
-          const app = initializeApp(config);
-          db = getFirestore(app);
-          auth = getAuth(app);
+    function setNetStatus(msg, type = 'info') {
+      const pill = document.getElementById('net-status-pill');
+      const dot = document.getElementById('net-status-dot');
+      const text = document.getElementById('net-status-text');
 
-          const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-          if (token) {
-            await signInWithCustomToken(auth, token);
-          } else {
-            await signInAnonymously(auth);
-          }
-
-          onAuthStateChanged(auth, (user) => {
-            if (user) {
-              currentUser = user;
-              localPlayer.id = user.uid;
-            }
-          });
-        }
-      } catch (err) {
-        console.warn("Firebase initialized in standalone local mode.", err);
-      }
-    }
-
-    function getRoomRef(roomId) {
-      return doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
-    }
-
-    async function createRoomFirebase() {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      currentRoomId = code;
-      localPlayer.isHost = true;
-      isSoloMode = false;
-
-      const roomPayload = {
-        roomId: code,
-        hostId: localPlayer.id,
-        status: 'LOBBY',
-        map: 'cyber_grid',
-        scoreLimit: 15,
-        players: {
-          [localPlayer.id]: sanitizePlayerData(localPlayer)
-        },
-        createdAt: Date.now()
-      };
-
-      if (db) {
-        await setDoc(getRoomRef(code), roomPayload);
-        subscribeRoomFirebase(code);
+      text.innerText = msg;
+      if (type === 'success') {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+      } else if (type === 'error') {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
       } else {
-        roomData = roomPayload;
-        renderLobbyUI();
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping';
       }
-
-      showToast(`Room ${code} created!`, 'success');
-      switchState('LOBBY');
     }
 
-    async function joinRoomFirebase(code) {
-      code = code.trim().toUpperCase();
-      if (code.length !== 6) {
-        showToast('Invalid 6-character room code', 'error');
+    function switchTransportToBroadcast() {
+      transportMode = 'BROADCAST';
+      setNetStatus('LOCAL NET (BROADCAST MODE)', 'success');
+      showToast('WebSocket restricted in sandbox preview. Using local tab-to-tab multiplayer mode!', 'warning');
+    }
+
+    function initPeerJS(onReadyCallback) {
+      if (transportMode === 'BROADCAST') {
+        if (onReadyCallback) onReadyCallback('local-broadcast-id');
         return;
       }
 
-      currentRoomId = code;
-      isSoloMode = false;
-      localPlayer.isHost = false;
+      if (peer && !peer.destroyed) {
+        if (onReadyCallback) onReadyCallback(peer.id);
+        return;
+      }
 
-      if (db) {
-        try {
-          const ref = getRoomRef(code);
-          const snap = await getDoc(ref);
-          if (!snap.exists()) {
-            showToast('Room not found!', 'error');
-            return;
+      setNetStatus('CONNECTING TO PEER NETWORK...', 'info');
+
+      try {
+        peer = new Peer({
+          config: { iceServers: STUN_SERVERS },
+          debug: 1
+        });
+
+        peer.on('open', (id) => {
+          setNetStatus('PEER ONLINE', 'success');
+          if (onReadyCallback) onReadyCallback(id);
+        });
+
+        peer.on('error', (err) => {
+          console.warn('PeerJS Network Warning:', err);
+          switchTransportToBroadcast();
+          if (onReadyCallback) onReadyCallback('broadcast-fallback');
+        });
+
+        peer.on('disconnected', () => {
+          if (transportMode === 'PEERJS' && peer && !peer.destroyed) {
+            try { peer.reconnect(); } catch(e) { switchTransportToBroadcast(); }
           }
-
-          const data = snap.data();
-          data.players[localPlayer.id] = sanitizePlayerData(localPlayer);
-          await updateDoc(ref, { players: data.players });
-          subscribeRoomFirebase(code);
-          showToast(`Joined Room ${code}`, 'success');
-          switchState('LOBBY');
-        } catch (e) {
-          showToast('Failed to join room', 'error');
-        }
-      } else {
-        showToast('Firestore offline. Operating in Solo mode.', 'warning');
-        startSoloMode();
+        });
+      } catch (e) {
+        console.warn('PeerJS initialization bypassed due to environment constraints:', e);
+        switchTransportToBroadcast();
+        if (onReadyCallback) onReadyCallback('broadcast-fallback');
       }
     }
 
-    function subscribeRoomFirebase(code) {
-      if (!db) return;
-      if (roomUnsubscribe) roomUnsubscribe();
+    // Host Room Creation
+    function createRoomWebRTC() {
+      const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      currentRoomCode = roomCode;
+      localPlayer.isHost = true;
+      isSoloMode = false;
+      players = {};
+      players[localPlayer.id] = localPlayer;
+      guestConnections = {};
 
-      roomUnsubscribe = onSnapshot(getRoomRef(code), (snap) => {
-        if (!snap.exists()) return;
-        roomData = snap.data();
-        
-        // Dynamic Player Synchronization
-        if (roomData.players) {
-          Object.keys(roomData.players).forEach(id => {
-            if (id !== localPlayer.id) {
-              const remote = roomData.players[id];
-              if (!players[id]) {
-                players[id] = remote;
-              } else {
-                // Lerp remote player position & angles smoothly
-                players[id].x += (remote.x - players[id].x) * 0.3;
-                players[id].y += (remote.y - players[id].y) * 0.3;
-                players[id].angle = remote.angle;
-                players[id].turretAngle = remote.turretAngle;
-                players[id].hp = remote.hp;
-                players[id].shield = remote.shield;
-                players[id].score = remote.score;
-                players[id].kills = remote.kills;
-                players[id].deaths = remote.deaths;
-                players[id].name = remote.name;
-                players[id].color = remote.color;
-                players[id].archetype = remote.archetype;
-              }
-            }
-          });
+      // Initialize BroadcastChannel listener for multi-window/tab support in canvas previews
+      setupBroadcastChannelHost(roomCode);
 
-          // Remove disconnected players
-          Object.keys(players).forEach(id => {
-            if (id !== localPlayer.id && !roomData.players[id]) {
-              delete players[id];
-            }
-          });
+      initPeerJS((id) => {
+        if (transportMode === 'BROADCAST') {
+          setNetStatus(`HOSTING (LOCAL ROOM: ${roomCode})`, 'success');
+          showToast(`Room ${roomCode} created (Broadcast Mode)!`, 'success');
+          switchState('LOBBY');
+          renderLobbyUI();
+          return;
         }
 
-        // Room Status changes
-        if (roomData.status === 'PLAYING' && gameState === 'LOBBY') {
-          startBattleSession();
-        } else if (roomData.status === 'VICTORY' && gameState !== 'VICTORY') {
-          triggerVictoryState(roomData.winner);
+        const hostPeerId = `neon-arena-v2-room-${roomCode}`;
+        if (peer) {
+          try { peer.destroy(); } catch(e) {}
         }
 
-        if (gameState === 'LOBBY') {
+        setNetStatus(`REGISTERING ROOM ${roomCode}...`, 'info');
+
+        try {
+          peer = new Peer(hostPeerId, {
+            config: { iceServers: STUN_SERVERS },
+            debug: 1
+          });
+
+          peer.on('open', () => {
+            setNetStatus(`HOSTING ROOM: ${roomCode}`, 'success');
+            showToast(`Room ${roomCode} created successfully!`, 'success');
+            switchState('LOBBY');
+            renderLobbyUI();
+          });
+
+          peer.on('connection', (conn) => {
+            setupHostConnectionListeners(conn);
+          });
+
+          peer.on('error', (err) => {
+            console.warn('Host WebRTC note:', err);
+            switchTransportToBroadcast();
+            switchState('LOBBY');
+            renderLobbyUI();
+          });
+        } catch(e) {
+          switchTransportToBroadcast();
+          switchState('LOBBY');
           renderLobbyUI();
         }
-      }, (err) => {
-        console.error("Firestore sync error:", err);
       });
     }
 
-    function sanitizePlayerData(p) {
-      return {
-        id: p.id,
-        name: p.name,
-        color: p.color,
-        archetype: p.archetype,
-        x: p.x,
-        y: p.y,
-        angle: p.angle,
-        turretAngle: p.turretAngle,
-        hp: p.hp,
-        shield: p.shield,
-        score: p.score,
-        kills: p.kills,
-        deaths: p.deaths,
-        isHost: p.isHost,
-        isBot: p.isBot || false,
-        lastUpdated: Date.now()
+    function setupBroadcastChannelHost(roomCode) {
+      if (broadcastChannel) broadcastChannel.close();
+      broadcastChannel = new BroadcastChannel(`neon_arena_room_${roomCode}`);
+      
+      broadcastChannel.onmessage = (event) => {
+        const data = event.data;
+        if (!data || !data.type || !localPlayer.isHost) return;
+
+        if (data.type === 'JOIN_LOBBY') {
+          const guestPlayer = data.player;
+          players[guestPlayer.id] = {
+            ...guestPlayer,
+            hp: 100,
+            maxHp: 100,
+            shield: 0,
+            score: 0,
+            kills: 0,
+            deaths: 0,
+            isHost: false,
+            isBot: false,
+            lastShotTime: 0
+          };
+          showToast(`${guestPlayer.name} joined the room!`, 'info');
+          renderLobbyUI();
+          broadcastToGuests({ type: 'LOBBY_UPDATE', players: sanitizeAllPlayers(), roomData });
+        } else if (data.type === 'CLIENT_INPUT') {
+          const p = players[data.id];
+          if (p) {
+            p.moveX = data.moveX;
+            p.moveY = data.moveY;
+            p.turretAngle = data.turretAngle;
+          }
+        } else if (data.type === 'CLIENT_SHOOT') {
+          const p = players[data.id];
+          if (p && p.hp > 0) {
+            firePlayerShot(p);
+          }
+        }
       };
     }
 
-    // Sync Local State to Firestore (Throttled)
-    let lastSyncTime = 0;
-    function syncLocalPlayerState() {
-      if (!db || !currentRoomId || isSoloMode || gameState !== 'PLAYING') return;
-      const now = Date.now();
-      if (now - lastSyncTime < 45) return; // ~22 updates per sec
-      lastSyncTime = now;
+    function setupHostConnectionListeners(conn) {
+      conn.on('open', () => {
+        guestConnections[conn.peer] = conn;
 
-      const pRef = getRoomRef(currentRoomId);
-      updateDoc(pRef, {
-        [`players.${localPlayer.id}`]: sanitizePlayerData(localPlayer)
-      }).catch(() => {});
+        conn.send({
+          type: 'WELCOME_LOBBY',
+          roomCode: currentRoomCode,
+          map: roomData.map,
+          scoreLimit: roomData.scoreLimit,
+          gameState: gameState
+        });
+      });
+
+      conn.on('data', (data) => {
+        if (!data || !data.type) return;
+
+        if (data.type === 'JOIN_LOBBY') {
+          const guestPlayer = data.player;
+          players[guestPlayer.id] = {
+            ...guestPlayer,
+            hp: 100,
+            maxHp: 100,
+            shield: 0,
+            score: 0,
+            kills: 0,
+            deaths: 0,
+            isHost: false,
+            isBot: false,
+            lastShotTime: 0
+          };
+          showToast(`${guestPlayer.name} joined the room!`, 'info');
+          renderLobbyUI();
+          broadcastToGuests({ type: 'LOBBY_UPDATE', players: sanitizeAllPlayers(), roomData });
+        } else if (data.type === 'CLIENT_INPUT') {
+          const p = players[data.id];
+          if (p) {
+            p.moveX = data.moveX;
+            p.moveY = data.moveY;
+            p.turretAngle = data.turretAngle;
+          }
+        } else if (data.type === 'CLIENT_SHOOT') {
+          const p = players[data.id];
+          if (p && p.hp > 0) {
+            firePlayerShot(p);
+          }
+        }
+      });
+
+      conn.on('close', () => {
+        delete guestConnections[conn.peer];
+        Object.keys(players).forEach(id => {
+          if (players[id].peerId === conn.peer) {
+            showToast(`${players[id].name} left the match`, 'warning');
+            delete players[id];
+          }
+        });
+        renderLobbyUI();
+        broadcastToGuests({ type: 'LOBBY_UPDATE', players: sanitizeAllPlayers(), roomData });
+      });
+    }
+
+    // Guest Join Functionality
+    function joinRoomWebRTC(code) {
+      code = code.trim().toUpperCase();
+      if (code.length !== 6) {
+        showToast('Please enter a valid 6-character room code', 'error');
+        return;
+      }
+
+      currentRoomCode = code;
+      localPlayer.isHost = false;
+      isSoloMode = false;
+
+      // Always initialize BroadcastChannel listener for guest fallback
+      setupBroadcastChannelGuest(code);
+
+      initPeerJS(() => {
+        if (transportMode === 'BROADCAST') {
+          setNetStatus(`JOINED ROOM ${code} (LOCAL)`, 'success');
+          switchState('LOBBY');
+          return;
+        }
+
+        const targetHostPeerId = `neon-arena-v2-room-${code}`;
+        setNetStatus(`CONNECTING TO ROOM ${code}...`, 'info');
+
+        try {
+          hostConn = peer.connect(targetHostPeerId, { reliable: true });
+
+          hostConn.on('open', () => {
+            localPlayer.peerId = peer.id;
+            setNetStatus(`CONNECTED TO ROOM ${code}`, 'success');
+            showToast(`Connected to room ${code}!`, 'success');
+
+            hostConn.send({
+              type: 'JOIN_LOBBY',
+              player: {
+                id: localPlayer.id,
+                name: localPlayer.name,
+                color: localPlayer.color,
+                archetype: localPlayer.archetype,
+                peerId: peer.id
+              }
+            });
+
+            switchState('LOBBY');
+          });
+
+          hostConn.on('data', (data) => handleIncomingData(data));
+
+          hostConn.on('close', () => {
+            setNetStatus('HOST DISCONNECTED', 'error');
+            showToast('Host disconnected from room!', 'error');
+            switchState('MENU');
+          });
+
+          hostConn.on('error', (err) => {
+            console.warn('WebRTC guest note, using BroadcastChannel:', err);
+            switchTransportToBroadcast();
+            switchState('LOBBY');
+          });
+        } catch(e) {
+          switchTransportToBroadcast();
+          switchState('LOBBY');
+        }
+      });
+    }
+
+    function setupBroadcastChannelGuest(code) {
+      if (broadcastChannel) broadcastChannel.close();
+      broadcastChannel = new BroadcastChannel(`neon_arena_room_${code}`);
+
+      // Broadcast join request to local host tab
+      broadcastChannel.postMessage({
+        type: 'JOIN_LOBBY',
+        player: {
+          id: localPlayer.id,
+          name: localPlayer.name,
+          color: localPlayer.color,
+          archetype: localPlayer.archetype,
+          peerId: 'bc_' + localPlayer.id
+        }
+      });
+
+      broadcastChannel.onmessage = (event) => {
+        const data = event.data;
+        if (!data || !data.type || localPlayer.isHost) return;
+        handleIncomingData(data);
+      };
+    }
+
+    function handleIncomingData(data) {
+      if (data.type === 'WELCOME_LOBBY' || data.type === 'LOBBY_UPDATE') {
+        if (data.roomData) roomData = data.roomData;
+        if (data.players) players = data.players;
+        renderLobbyUI();
+      } else if (data.type === 'GAME_START') {
+        roomData = data.roomData;
+        gameState = 'PLAYING';
+        switchState('PLAYING');
+        generateArenaMap(roomData.map);
+      } else if (data.type === 'GAME_SNAPSHOT') {
+        players = data.players;
+        projectiles = data.projectiles;
+        crates = data.crates;
+        powerups = data.powerups;
+        hazards = data.hazards;
+        killLogs = data.killLogs;
+
+        if (data.gameState && data.gameState !== gameState) {
+          if (data.gameState === 'VICTORY') triggerVictoryState(data.winner);
+          gameState = data.gameState;
+        }
+        updateHUDStatus();
+      }
+    }
+
+    function broadcastToGuests(payload) {
+      // 1. Send via WebRTC to connected remote guests
+      Object.values(guestConnections).forEach(conn => {
+        if (conn && conn.open) {
+          try { conn.send(payload); } catch(e) {}
+        }
+      });
+
+      // 2. Send via BroadcastChannel to local tabs/windows
+      if (broadcastChannel) {
+        try { broadcastChannel.postMessage(payload); } catch(e) {}
+      }
+    }
+
+    function sanitizeAllPlayers() {
+      const clean = {};
+      Object.keys(players).forEach(id => {
+        const p = players[id];
+        clean[id] = {
+          id: p.id,
+          name: p.name,
+          color: p.color,
+          archetype: p.archetype,
+          x: p.x,
+          y: p.y,
+          angle: p.angle,
+          turretAngle: p.turretAngle,
+          hp: p.hp,
+          maxHp: p.maxHp,
+          shield: p.shield,
+          score: p.score,
+          kills: p.kills,
+          deaths: p.deaths,
+          isHost: p.isHost,
+          isBot: p.isBot || false,
+          powerup: p.powerup
+        };
+      });
+      return clean;
     }
 
     // ------------------------------------------------------------------
-    // 4. MAP GENERATOR & GAME OBJECTS
+    // 4. MAP GENERATOR & ARENA OBJECTS
     // ------------------------------------------------------------------
     function generateArenaMap(mapType = 'cyber_grid') {
       arenaWalls = [];
@@ -734,28 +936,22 @@
       const w = canvas.width;
       const h = canvas.height;
 
-      // Outer boundary walls
       const wallThickness = 24;
-      arenaWalls.push({ x: 0, y: 0, width: w, height: wallThickness }); // Top
-      arenaWalls.push({ x: 0, y: h - wallThickness, width: w, height: wallThickness }); // Bottom
-      arenaWalls.push({ x: 0, y: 0, width: wallThickness, height: h }); // Left
-      arenaWalls.push({ x: w - wallThickness, y: 0, width: wallThickness, height: h }); // Right
+      arenaWalls.push({ x: 0, y: 0, width: w, height: wallThickness });
+      arenaWalls.push({ x: 0, y: h - wallThickness, width: w, height: wallThickness });
+      arenaWalls.push({ x: 0, y: 0, width: wallThickness, height: h });
+      arenaWalls.push({ x: w - wallThickness, y: 0, width: wallThickness, height: h });
 
       if (mapType === 'cyber_grid') {
-        // Inner Obstacles
         arenaWalls.push({ x: w * 0.25, y: h * 0.25, width: 120, height: 24 });
         arenaWalls.push({ x: w * 0.25, y: h * 0.25, width: 24, height: 120 });
-
         arenaWalls.push({ x: w * 0.75 - 120, y: h * 0.25, width: 120, height: 24 });
         arenaWalls.push({ x: w * 0.75 - 24, y: h * 0.25, width: 24, height: 120 });
-
         arenaWalls.push({ x: w * 0.25, y: h * 0.75 - 24, width: 120, height: 24 });
         arenaWalls.push({ x: w * 0.25, y: h * 0.75 - 120, width: 24, height: 120 });
-
         arenaWalls.push({ x: w * 0.75 - 120, y: h * 0.75 - 24, width: 120, height: 24 });
         arenaWalls.push({ x: w * 0.75 - 24, y: h * 0.75 - 120, width: 24, height: 120 });
 
-        // Destructible crates
         spawnCrateGrid([
           { x: w * 0.5 - 40, y: h * 0.3 },
           { x: w * 0.5 + 40, y: h * 0.3 },
@@ -777,7 +973,6 @@
           { x: w * 0.3, y: h * 0.8 }
         ]);
       } else if (mapType === 'void_hazards') {
-        // Center hazard turrets
         hazards.push({ x: w * 0.35, y: h * 0.5, radius: 25, angle: 0, rotSpeed: 0.02, beamLength: 180 });
         hazards.push({ x: w * 0.65, y: h * 0.5, radius: 25, angle: Math.PI, rotSpeed: -0.02, beamLength: 180 });
 
@@ -815,7 +1010,7 @@
     }
 
     // ------------------------------------------------------------------
-    // 5. INPUT MANAGEMENT & TOUCH CONTROLS
+    // 5. INPUT CONTROLS (DESKTOP & TOUCH JOYSTICKS)
     // ------------------------------------------------------------------
     const keys = {};
     let mousePos = { x: 0, y: 0 };
@@ -843,11 +1038,16 @@
 
     canvas.addEventListener('mousedown', (e) => {
       if (e.button === 0 && gameState === 'PLAYING') {
-        firePlayerShot(localPlayer);
+        if (localPlayer.isHost || isSoloMode) {
+          firePlayerShot(localPlayer);
+        } else {
+          const shootMsg = { type: 'CLIENT_SHOOT', id: localPlayer.id };
+          if (hostConn && hostConn.open) hostConn.send(shootMsg);
+          if (broadcastChannel) broadcastChannel.postMessage(shootMsg);
+        }
       }
     });
 
-    // Touch Virtual Joysticks logic
     function setupTouchControls() {
       const moveZone = document.getElementById('touch-move-zone');
       const moveKnob = document.getElementById('touch-move-knob');
@@ -856,7 +1056,6 @@
 
       if (!moveZone || !fireZone) return;
 
-      // Show touch controls if touch device detected
       window.addEventListener('touchstart', () => {
         document.getElementById('mobile-controls').classList.remove('hidden');
       }, { once: true });
@@ -898,7 +1097,6 @@
       moveZone.addEventListener('touchend', resetMove);
       moveZone.addEventListener('touchcancel', resetMove);
 
-      // Fire Touch Zone
       fireZone.addEventListener('touchstart', (e) => {
         const touch = e.changedTouches[0];
         fireTouchId = touch.identifier;
@@ -948,94 +1146,131 @@
       callback(dx / maxDist, dy / maxDist);
     }
 
-    // ------------------------------------------------------------------
-    // 6. GAME LOGIC & SIMULATION LOOP
-    // ------------------------------------------------------------------
-    function updateGamePhysics() {
-      if (gameState !== 'PLAYING') return;
+    // Send local client inputs to host at 30Hz
+    setInterval(() => {
+      if (gameState !== 'PLAYING' || localPlayer.isHost || isSoloMode) return;
 
-      const arch = ARCHETYPES[localPlayer.archetype] || ARCHETYPES.viper;
-      let currentSpeed = arch.speed;
-
-      if (localPlayer.powerup === 'SPEED') currentSpeed *= 1.45;
-
-      // Local player movement
       let moveX = 0;
       let moveY = 0;
-
       if (keys['w'] || keys['arrowup']) moveY -= 1;
       if (keys['s'] || keys['arrowdown']) moveY += 1;
       if (keys['a'] || keys['arrowleft']) moveX -= 1;
       if (keys['d'] || keys['arrowright']) moveX += 1;
 
-      // Combine with touch vector
       if (touchMoveVector.x !== 0 || touchMoveVector.y !== 0) {
         moveX = touchMoveVector.x;
         moveY = touchMoveVector.y;
       }
 
-      const length = Math.hypot(moveX, moveY);
-      if (length > 0) {
-        moveX /= length;
-        moveY /= length;
+      let turretAngle = Math.atan2(mousePos.y - localPlayer.y, mousePos.x - localPlayer.x);
+      if (touchAimAngle !== null) turretAngle = touchAimAngle;
 
-        const nextX = localPlayer.x + moveX * currentSpeed;
-        const nextY = localPlayer.y + moveY * currentSpeed;
+      const inputMsg = {
+        type: 'CLIENT_INPUT',
+        id: localPlayer.id,
+        moveX,
+        moveY,
+        turretAngle
+      };
 
-        if (!checkTankWallCollision(nextX, localPlayer.y, 22)) localPlayer.x = nextX;
-        if (!checkTankWallCollision(localPlayer.x, nextY, 22)) localPlayer.y = nextY;
+      if (hostConn && hostConn.open) hostConn.send(inputMsg);
+      if (broadcastChannel) broadcastChannel.postMessage(inputMsg);
 
-        localPlayer.angle = Math.atan2(moveY, moveX);
+      if (isTouchFiring) {
+        const shootMsg = { type: 'CLIENT_SHOOT', id: localPlayer.id };
+        if (hostConn && hostConn.open) hostConn.send(shootMsg);
+        if (broadcastChannel) broadcastChannel.postMessage(shootMsg);
+      }
+    }, 33);
 
-        // Spawn engine trail particles
-        if (Math.random() < 0.4) {
-          particles.push({
-            x: localPlayer.x - Math.cos(localPlayer.angle) * 18,
-            y: localPlayer.y - Math.sin(localPlayer.angle) * 18,
-            vx: (Math.random() - 0.5) * 0.8,
-            vy: (Math.random() - 0.5) * 0.8,
-            life: 0.6,
-            color: localPlayer.color,
-            size: Math.random() * 4 + 2
-          });
+    // ------------------------------------------------------------------
+    // 6. AUTHORITATIVE PHYSICS ENGINE (RUNS ON HOST)
+    // ------------------------------------------------------------------
+    function updateGamePhysics() {
+      if (gameState !== 'PLAYING') return;
+
+      // Guest clients render particles and local HUD updates
+      if (!localPlayer.isHost && !isSoloMode) {
+        updateParticles();
+        return;
+      }
+
+      // Local Host Player Keyboard & Touch Inputs
+      let localMoveX = 0;
+      let localMoveY = 0;
+      if (keys['w'] || keys['arrowup']) localMoveY -= 1;
+      if (keys['s'] || keys['arrowdown']) localMoveY += 1;
+      if (keys['a'] || keys['arrowleft']) localMoveX -= 1;
+      if (keys['d'] || keys['arrowright']) localMoveX += 1;
+
+      if (touchMoveVector.x !== 0 || touchMoveVector.y !== 0) {
+        localMoveX = touchMoveVector.x;
+        localMoveY = touchMoveVector.y;
+      }
+
+      localPlayer.moveX = localMoveX;
+      localPlayer.moveY = localMoveY;
+      localPlayer.turretAngle = touchAimAngle !== null ? touchAimAngle : Math.atan2(mousePos.y - localPlayer.y, mousePos.x - localPlayer.x);
+
+      if (isTouchFiring) firePlayerShot(localPlayer);
+
+      // Process All Tank Movements
+      Object.values(players).forEach(p => {
+        if (p.hp <= 0) return;
+
+        const arch = ARCHETYPES[p.archetype] || ARCHETYPES.viper;
+        let currentSpeed = arch.speed;
+        if (p.powerup === 'SPEED') currentSpeed *= 1.45;
+
+        let mx = p.moveX || 0;
+        let my = p.moveY || 0;
+        const len = Math.hypot(mx, my);
+
+        if (len > 0) {
+          mx /= len;
+          my /= len;
+
+          const nextX = p.x + mx * currentSpeed;
+          const nextY = p.y + my * currentSpeed;
+
+          if (!checkTankWallCollision(nextX, p.y, 22)) p.x = nextX;
+          if (!checkTankWallCollision(p.x, nextY, 22)) p.y = nextY;
+
+          p.angle = Math.atan2(my, mx);
+
+          if (Math.random() < 0.3) {
+            particles.push({
+              x: p.x - Math.cos(p.angle) * 18,
+              y: p.y - Math.sin(p.angle) * 18,
+              vx: (Math.random() - 0.5) * 0.8,
+              vy: (Math.random() - 0.5) * 0.8,
+              life: 0.5,
+              color: p.color,
+              size: Math.random() * 4 + 2
+            });
+          }
         }
-      }
+      });
 
-      // Turret Aim Calculation
-      if (touchAimAngle !== null) {
-        localPlayer.turretAngle = touchAimAngle;
-        if (isTouchFiring) firePlayerShot(localPlayer);
-      } else {
-        localPlayer.turretAngle = Math.atan2(mousePos.y - localPlayer.y, mousePos.x - localPlayer.x);
-      }
+      // Update AI Bots
+      updateBotAI();
 
-      // Active Powerup timer decay
-      if (localPlayer.powerup && Date.now() > localPlayer.powerupTime) {
-        localPlayer.powerup = null;
-        updateHUDStatus();
-      }
+      // Update Map Hazards
+      updateHazards();
 
-      // Update AI Bots if Host or Solo Mode
-      if (localPlayer.isHost || isSoloMode) {
-        updateBotAI();
-        updateHazards();
-      }
-
-      // Update Projectiles
+      // Update Projectiles & Collisions
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         p.x += p.vx;
         p.y += p.vy;
         p.life -= 0.016;
 
-        // Collision with walls & Bouncing
         let hitWall = false;
         arenaWalls.forEach(w => {
           if (p.x > w.x && p.x < w.x + w.width && p.y > w.y && p.y < w.y + w.height) {
             hitWall = true;
             if (p.bounces > 0) {
               p.bounces--;
-              // Simple bounce reflection
               if (p.x - p.vx <= w.x || p.x - p.vx >= w.x + w.width) p.vx *= -1;
               else p.vy *= -1;
             }
@@ -1048,7 +1283,7 @@
           continue;
         }
 
-        // Collision with Crates
+        // Crate Collisions
         for (let cIdx = crates.length - 1; cIdx >= 0; cIdx--) {
           const crate = crates[cIdx];
           if (Math.hypot(p.x - crate.x, p.y - crate.y) < crate.size / 2 + 4) {
@@ -1068,13 +1303,12 @@
 
         if (i < 0 || !projectiles[i]) continue;
 
-        // Collision with Tanks (Local + Remote + Bots)
-        const allTargets = [localPlayer, ...Object.values(players)];
+        // Tank Collisions
+        const allTargets = Object.values(players);
         for (const target of allTargets) {
           if (target.id === p.ownerId || target.hp <= 0) continue;
 
           if (Math.hypot(p.x - target.x, p.y - target.y) < 22) {
-            // Hit tank!
             applyDamageToTank(target, p.damage, p.ownerId);
             createImpactSparks(p.x, p.y, target.color);
             projectiles.splice(i, 1);
@@ -1088,24 +1322,28 @@
       // Check Powerup Pickups
       for (let i = powerups.length - 1; i >= 0; i--) {
         const pow = powerups[i];
-        if (Math.hypot(localPlayer.x - pow.x, localPlayer.y - pow.y) < 30) {
-          applyPowerupToPlayer(localPlayer, pow.type);
-          soundEngine.playPowerup();
-          powerups.splice(i, 1);
-        }
+        Object.values(players).forEach(p => {
+          if (p.hp > 0 && Math.hypot(p.x - pow.x, p.y - pow.y) < 30) {
+            applyPowerupToPlayer(p, pow.type);
+            soundEngine.playPowerup();
+            powerups.splice(i, 1);
+          }
+        });
       }
 
-      // Update Particles
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const pt = particles[i];
-        pt.x += pt.vx;
-        pt.y += pt.vy;
-        pt.life -= 0.02;
-        if (pt.life <= 0) particles.splice(i, 1);
-      }
+      updateParticles();
 
-      // Sync player data to Firestore
-      syncLocalPlayerState();
+      // Host Broadcasts 30FPS Game Snapshot to All Guests
+      broadcastToGuests({
+        type: 'GAME_SNAPSHOT',
+        players: sanitizeAllPlayers(),
+        projectiles: projectiles.map(p => ({ x: Math.round(p.x), y: Math.round(p.y), color: p.color })),
+        crates: crates.map(c => ({ id: c.id, x: c.x, y: c.y, hp: c.hp, maxHp: c.maxHp })),
+        powerups: powerups.map(pw => ({ id: pw.id, x: pw.x, y: pw.y, type: pw.type })),
+        hazards: hazards.map(h => ({ x: h.x, y: h.y, angle: h.angle, beamLength: h.beamLength })),
+        killLogs: killLogs.slice(-4),
+        gameState: gameState
+      });
     }
 
     function checkTankWallCollision(x, y, radius) {
@@ -1124,7 +1362,7 @@
       if (p.powerup === 'RAPID_FIRE') cooldown *= 0.45;
 
       const now = Date.now();
-      if (now - p.lastShotTime < cooldown) return;
+      if (now - (p.lastShotTime || 0) < cooldown) return;
       p.lastShotTime = now;
 
       soundEngine.playShoot(p.archetype);
@@ -1142,7 +1380,6 @@
         spawnSingleProjectile(p, muzzleX, muzzleY, p.turretAngle, arch.damage, 9, 1);
       }
 
-      // Muzzle flash particle
       particles.push({
         x: muzzleX,
         y: muzzleY,
@@ -1174,7 +1411,7 @@
         soundEngine.playShieldHit();
         target.shield -= damage;
         if (target.shield < 0) {
-          target.hp += target.shield; // Overflow to HP
+          target.hp += target.shield;
           target.shield = 0;
         }
       } else {
@@ -1191,9 +1428,7 @@
         createExplosionParticles(target.x, target.y, target.color, 35);
         screenShake(12);
 
-        // Find attacker
-        let attacker = target.id === localPlayer.id ? null : localPlayer;
-        if (!attacker && players[attackerId]) attacker = players[attackerId];
+        let attacker = players[attackerId];
 
         target.deaths++;
         if (attacker) {
@@ -1204,12 +1439,9 @@
           addKillLog('ARENA HAZARD', target.name, '#ff0055');
         }
 
-        // Check Victory Score Limit
-        const scoreLimit = roomData?.scoreLimit || 15;
+        const scoreLimit = roomData.scoreLimit || 15;
         if (attacker && attacker.score >= scoreLimit) {
-          if (localPlayer.isHost || isSoloMode) {
-            triggerVictoryState(attacker);
-          }
+          triggerVictoryState(attacker);
         } else {
           respawnTank(target);
         }
@@ -1228,7 +1460,7 @@
 
     function applyPowerupToPlayer(p, type) {
       p.powerup = type;
-      p.powerupTime = Date.now() + 8000; // 8 seconds duration
+      p.powerupTime = Date.now() + 8000;
 
       if (type === 'SHIELD') {
         p.shield = 60;
@@ -1239,15 +1471,11 @@
       if (p.id === localPlayer.id) updateHUDStatus();
     }
 
-    // ------------------------------------------------------------------
-    // 7. BOT AI LOGIC (OFFLINE / PRACTICE / MULTIPLAYER BOT)
-    // ------------------------------------------------------------------
     function updateBotAI() {
       Object.values(players).forEach(p => {
         if (!p.isBot || p.hp <= 0) return;
 
-        // Find closest enemy target
-        const targets = [localPlayer, ...Object.values(players)].filter(t => t.id !== p.id && t.hp > 0);
+        const targets = Object.values(players).filter(t => t.id !== p.id && t.hp > 0);
         if (targets.length === 0) return;
 
         let closest = targets[0];
@@ -1260,7 +1488,6 @@
           }
         });
 
-        // AI Steering
         const angleToTarget = Math.atan2(closest.y - p.y, closest.x - p.x);
         p.turretAngle = angleToTarget;
 
@@ -1271,7 +1498,6 @@
         if (!checkTankWallCollision(nextX, p.y, 22)) p.x = nextX;
         if (!checkTankWallCollision(p.x, nextY, 22)) p.y = nextY;
 
-        // Shoot AI projectile
         if (Math.random() < 0.035 && minDist < 450) {
           firePlayerShot(p);
         }
@@ -1282,14 +1508,11 @@
       hazards.forEach(h => {
         h.angle += h.rotSpeed;
 
-        // Check hazard laser collision with tanks
         const beamEndX = h.x + Math.cos(h.angle) * h.beamLength;
         const beamEndY = h.y + Math.sin(h.angle) * h.beamLength;
 
-        const allTanks = [localPlayer, ...Object.values(players)];
-        allTanks.forEach(t => {
+        Object.values(players).forEach(t => {
           if (t.hp <= 0) return;
-          // Distance from point to line segment
           const dist = distToSegment({ x: t.x, y: t.y }, { x: h.x, y: h.y }, { x: beamEndX, y: beamEndY });
           if (dist < 20) {
             applyDamageToTank(t, 2, 'hazard');
@@ -1306,8 +1529,18 @@
       return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
     }
 
+    function updateParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.life -= 0.02;
+        if (pt.life <= 0) particles.splice(i, 1);
+      }
+    }
+
     // ------------------------------------------------------------------
-    // 8. CANVAS RENDERER & VISUAL EFFECTS
+    // 7. RENDERER & VISUAL EFFECTS
     // ------------------------------------------------------------------
     let shakeIntensity = 0;
     function screenShake(amount) {
@@ -1318,7 +1551,6 @@
       const canvas = document.getElementById('gameCanvas');
       const ctx = canvas.getContext('2d');
 
-      // Resize canvas gracefully to container
       if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -1327,7 +1559,6 @@
 
       ctx.save();
 
-      // Screen Shake Transform
       if (shakeIntensity > 0) {
         const dx = (Math.random() - 0.5) * shakeIntensity;
         const dy = (Math.random() - 0.5) * shakeIntensity;
@@ -1336,7 +1567,6 @@
         if (shakeIntensity < 0.5) shakeIntensity = 0;
       }
 
-      // Background Cyber Grid Pattern
       ctx.fillStyle = '#070a14';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1356,7 +1586,6 @@
         ctx.stroke();
       }
 
-      // Render Obstacle Walls
       arenaWalls.forEach(w => {
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(w.x, w.y, w.width, w.height);
@@ -1368,7 +1597,6 @@
         ctx.shadowBlur = 0;
       });
 
-      // Render Destructible Crates
       crates.forEach(c => {
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(c.x - c.size / 2, c.y - c.size / 2, c.size, c.size);
@@ -1378,7 +1606,6 @@
         ctx.lineWidth = 2;
         ctx.strokeRect(c.x - c.size / 2, c.y - c.size / 2, c.size, c.size);
 
-        // Crate cross pattern
         ctx.beginPath();
         ctx.moveTo(c.x - c.size / 2, c.y - c.size / 2);
         ctx.lineTo(c.x + c.size / 2, c.y + c.size / 2);
@@ -1388,7 +1615,6 @@
         ctx.shadowBlur = 0;
       });
 
-      // Render Hazards
       hazards.forEach(h => {
         ctx.save();
         ctx.translate(h.x, h.y);
@@ -1399,7 +1625,6 @@
         ctx.arc(0, 0, h.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Laser Beam
         ctx.rotate(h.angle);
         ctx.strokeStyle = '#ff0055';
         ctx.lineWidth = 4;
@@ -1410,7 +1635,6 @@
         ctx.restore();
       });
 
-      // Render Powerups
       powerups.forEach(p => {
         ctx.save();
         ctx.translate(p.x, p.y);
@@ -1430,7 +1654,6 @@
         ctx.restore();
       });
 
-      // Render Projectiles
       projectiles.forEach(p => {
         ctx.save();
         ctx.fillStyle = p.color;
@@ -1442,7 +1665,6 @@
         ctx.restore();
       });
 
-      // Render Particles
       particles.forEach(pt => {
         ctx.save();
         ctx.fillStyle = pt.color;
@@ -1455,9 +1677,7 @@
         ctx.restore();
       });
 
-      // Render Tanks (Local & Remote & Bots)
-      const allTanks = [localPlayer, ...Object.values(players)];
-      allTanks.forEach(p => {
+      Object.values(players).forEach(p => {
         if (p.hp <= 0) return;
         renderTankSprite(ctx, p);
       });
@@ -1469,16 +1689,13 @@
       ctx.save();
       ctx.translate(p.x, p.y);
 
-      // Tank Body & Tracks
       ctx.save();
       ctx.rotate(p.angle);
 
-      // Treads
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(-22, -20, 44, 8);
       ctx.fillRect(-22, 12, 44, 8);
 
-      // Chassis Core
       ctx.fillStyle = p.color;
       ctx.shadowColor = p.color;
       ctx.shadowBlur = 12;
@@ -1487,7 +1704,6 @@
 
       ctx.restore();
 
-      // Shield Aura
       if (p.shield > 0) {
         ctx.strokeStyle = '#38bdf8';
         ctx.shadowColor = '#38bdf8';
@@ -1499,12 +1715,11 @@
         ctx.shadowBlur = 0;
       }
 
-      // Turret Hub & Barrel
       ctx.rotate(p.turretAngle);
       ctx.fillStyle = '#0f172a';
       ctx.strokeStyle = p.color;
       ctx.lineWidth = 2;
-      ctx.fillRect(0, -4, 26, 8); // Barrel
+      ctx.fillRect(0, -4, 26, 8);
       ctx.strokeRect(0, -4, 26, 8);
 
       ctx.beginPath();
@@ -1515,14 +1730,12 @@
 
       ctx.restore();
 
-      // Nameplate & HP Bar Above Tank
       ctx.save();
       ctx.font = '10px Rajdhani';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.fillText(p.name, p.x, p.y - 32);
 
-      // Health Bar
       const barW = 40;
       const barH = 4;
       ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
@@ -1564,7 +1777,6 @@
       }
     }
 
-    // Main Game Animation Loop
     function gameLoop() {
       updateGamePhysics();
       renderCanvasFrame();
@@ -1573,7 +1785,7 @@
     }
 
     // ------------------------------------------------------------------
-    // 9. UI & HUD EVENT HANDLERS
+    // 8. UI & HUD EVENT HANDLERS
     // ------------------------------------------------------------------
     function switchState(newState) {
       gameState = newState;
@@ -1594,11 +1806,11 @@
     }
 
     function renderLobbyUI() {
-      document.getElementById('lobby-code-display').innerText = currentRoomId || 'SOLO';
+      document.getElementById('lobby-code-display').innerText = currentRoomCode || 'SOLO';
       const pList = document.getElementById('lobby-player-list');
       pList.innerHTML = '';
 
-      const all = [localPlayer, ...Object.values(players)];
+      const all = Object.values(players);
       document.getElementById('lobby-player-count').innerText = `${all.length} / 6`;
 
       all.forEach(p => {
@@ -1614,10 +1826,10 @@
         pList.appendChild(row);
       });
 
-      // Disable host controls if not host
       document.getElementById('select-map').disabled = !localPlayer.isHost;
       document.getElementById('select-score-limit').disabled = !localPlayer.isHost;
       document.getElementById('btn-start-game').style.display = localPlayer.isHost ? 'flex' : 'none';
+      document.getElementById('btn-add-bot').style.display = localPlayer.isHost ? 'flex' : 'none';
     }
 
     function renderLeaderboardHUD() {
@@ -1625,7 +1837,7 @@
       const lb = document.getElementById('leaderboard-list');
       lb.innerHTML = '';
 
-      const sorted = [localPlayer, ...Object.values(players)].sort((a, b) => b.score - a.score);
+      const sorted = Object.values(players).sort((a, b) => b.score - a.score);
       sorted.slice(0, 4).forEach(p => {
         const item = document.createElement('div');
         item.className = 'flex justify-between items-center text-slate-300 font-mono';
@@ -1641,18 +1853,19 @@
     }
 
     function updateHUDStatus() {
-      document.getElementById('hud-player-name').innerText = localPlayer.name;
-      const hpPct = Math.max(0, (localPlayer.hp / localPlayer.maxHp) * 100);
+      const myState = players[localPlayer.id] || localPlayer;
+      document.getElementById('hud-player-name').innerText = myState.name;
+      const hpPct = Math.max(0, (myState.hp / myState.maxHp) * 100);
       document.getElementById('hud-hp-bar').style.width = `${hpPct}%`;
-      document.getElementById('hud-hp-text').innerText = `${Math.ceil(localPlayer.hp)} / ${localPlayer.maxHp}`;
+      document.getElementById('hud-hp-text').innerText = `${Math.ceil(myState.hp)} / ${myState.maxHp}`;
 
       const shieldBadge = document.getElementById('hud-shield-badge');
-      if (localPlayer.shield > 0) shieldBadge.classList.remove('hidden');
+      if (myState.shield > 0) shieldBadge.classList.remove('hidden');
       else shieldBadge.classList.add('hidden');
 
       const statusBox = document.getElementById('hud-powerup-status');
-      if (localPlayer.powerup) {
-        statusBox.innerHTML = `<i class="fa-solid fa-bolt text-amber-400"></i> ${localPlayer.powerup} ACTIVE`;
+      if (myState.powerup) {
+        statusBox.innerHTML = `<i class="fa-solid fa-bolt text-amber-400"></i> ${myState.powerup} ACTIVE`;
       } else {
         statusBox.innerHTML = '';
       }
@@ -1691,11 +1904,11 @@
 
     function startSoloMode() {
       isSoloMode = true;
-      currentRoomId = 'BOT_ARENA';
+      currentRoomCode = 'SOLO';
       localPlayer.isHost = true;
       players = {};
+      players[localPlayer.id] = localPlayer;
 
-      // Add 3 AI Bots
       for (let i = 1; i <= 3; i++) {
         const botId = 'bot_' + i;
         const color = TANK_COLORS[i % TANK_COLORS.length];
@@ -1722,21 +1935,22 @@
           lastShotTime: 0
         };
       }
+      setNetStatus('SOLO BOT MODE ACTIVE', 'success');
       switchState('LOBBY');
       renderLobbyUI();
     }
 
     function startBattleSession() {
-      generateArenaMap(roomData?.map || 'cyber_grid');
-      document.getElementById('hud-room-tag').innerText = `ROOM: ${currentRoomId || 'SOLO'}`;
-      document.getElementById('hud-score-limit').innerText = `${roomData?.scoreLimit || 15} KILLS`;
+      generateArenaMap(roomData.map);
+      document.getElementById('hud-room-tag').innerText = `ROOM: ${currentRoomCode || 'SOLO'}`;
+      document.getElementById('hud-score-limit').innerText = `${roomData.scoreLimit || 15} KILLS`;
 
       respawnTank(localPlayer);
       switchState('PLAYING');
       updateHUDStatus();
 
-      if (localPlayer.isHost && db && currentRoomId && !isSoloMode) {
-        updateDoc(getRoomRef(currentRoomId), { status: 'PLAYING' });
+      if (localPlayer.isHost && !isSoloMode) {
+        broadcastToGuests({ type: 'GAME_START', roomData });
       }
     }
 
@@ -1747,7 +1961,7 @@
 
       const statsContainer = document.getElementById('victory-stats');
       statsContainer.innerHTML = '';
-      const all = [localPlayer, ...Object.values(players)].sort((a, b) => b.score - a.score);
+      const all = Object.values(players).sort((a, b) => b.score - a.score);
 
       all.forEach((p, idx) => {
         const row = document.createElement('div');
@@ -1758,20 +1972,16 @@
         `;
         statsContainer.appendChild(row);
       });
-
-      if (localPlayer.isHost && db && currentRoomId && !isSoloMode) {
-        updateDoc(getRoomRef(currentRoomId), { status: 'VICTORY', winner });
-      }
     }
 
     // ------------------------------------------------------------------
-    // 10. SETUP MENU BINDINGS & URL ROOM PARSER
+    // 9. MENU INITIALIZATION & URL PARSER
     // ------------------------------------------------------------------
-    window.addEventListener('load', async () => {
-      await initFirebase();
+    window.addEventListener('load', () => {
+      initPeerJS();
       setupTouchControls();
 
-      // Dynamically Build Color Selector
+      // Build Color Selector
       const colorGroup = document.getElementById('color-picker-group');
       TANK_COLORS.forEach(c => {
         const btn = document.createElement('button');
@@ -1785,7 +1995,7 @@
         colorGroup.appendChild(btn);
       });
 
-      // Dynamically Build Archetype Selector
+      // Build Archetype Selector
       const archGroup = document.getElementById('tank-archetype-group');
       Object.keys(ARCHETYPES).forEach(key => {
         const arch = ARCHETYPES[key];
@@ -1804,21 +2014,21 @@
         archGroup.appendChild(card);
       });
 
-      // Name Input handler
+      // Name Input
       document.getElementById('input-player-name').addEventListener('input', (e) => {
         localPlayer.name = e.target.value.toUpperCase() || 'PILOT';
       });
 
-      // Button Listeners
-      document.getElementById('btn-create-room').onclick = createRoomFirebase;
+      // Button Event Listeners
+      document.getElementById('btn-create-room').onclick = createRoomWebRTC;
       document.getElementById('btn-join-room').onclick = () => {
         const code = document.getElementById('input-room-code').value;
-        joinRoomFirebase(code);
+        joinRoomWebRTC(code);
       };
       document.getElementById('btn-bot-mode').onclick = startSoloMode;
 
       document.getElementById('btn-copy-link').onclick = () => {
-        const link = `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
+        const link = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
         const tempInput = document.createElement('input');
         document.body.appendChild(tempInput);
         tempInput.value = link;
@@ -1829,6 +2039,7 @@
       };
 
       document.getElementById('btn-add-bot').onclick = () => {
+        if (!localPlayer.isHost) return;
         const botCount = Object.keys(players).filter(id => players[id].isBot).length + 1;
         const botId = 'bot_' + Math.random().toString(36).substring(2, 6);
         players[botId] = {
@@ -1851,10 +2062,12 @@
           lastShotTime: 0
         };
         renderLobbyUI();
-        showToast(`AI Bot Added!`, 'info');
+        broadcastToGuests({ type: 'LOBBY_UPDATE', players: sanitizeAllPlayers(), roomData });
+        showToast('AI Bot Target Added!', 'info');
       };
 
       document.getElementById('btn-start-game').onclick = () => {
+        if (!localPlayer.isHost) return;
         roomData = {
           map: document.getElementById('select-map').value,
           scoreLimit: parseInt(document.getElementById('select-score-limit').value)
@@ -1863,7 +2076,7 @@
       };
 
       document.getElementById('btn-leave-lobby').onclick = () => {
-        if (roomUnsubscribe) roomUnsubscribe();
+        if (hostConn) hostConn.close();
         switchState('MENU');
       };
 
@@ -1877,12 +2090,12 @@
         document.getElementById('btn-toggle-sound').innerText = `Audio FX: ${audioEnabled ? 'ON' : 'OFF'}`;
       };
 
-      // Check for ?room=CODE in URL parameters
+      // Check for ?room=CODE in URL parameter for direct joining
       const urlParams = new URLSearchParams(window.location.search);
       const roomParam = urlParams.get('room');
       if (roomParam && roomParam.length === 6) {
         document.getElementById('input-room-code').value = roomParam.toUpperCase();
-        showToast(`Room code ${roomParam.toUpperCase()} detected! Click Join.`, 'info');
+        showToast(`Room code ${roomParam.toUpperCase()} found in link! Click Join to enter.`, 'info');
       }
 
       // Start loop
